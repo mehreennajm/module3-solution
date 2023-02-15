@@ -1,77 +1,80 @@
-(function() {
-    'use strict';
+(function () {
+  'use strict';
   
-    angular.module('NarrowItDownApp', [])
-    .controller('NarrowItDownController', NarrowItDownController)
-    .service('MenuSearchService', MenuSearchService)
-    .constant('ApiBasePath', " https://coursera-jhu-default-rtdb.firebaseio.com")
-    .directive('foundItems', FoundItems);
+  angular.module('NarrowItDownApp', [])
+  .controller('NarrowItDownController', NarrowItDownController)
+  .service('MenuSearchService', MenuSearchService)
+  .constant('ApiBasePath', " https://coursera-jhu-default-rtdb.firebaseio.com/menu_items.json")
+  .directive('foundItems', foundItemsDirective);
   
-    function FoundItems() {
-      var ddo = {
-        templateUrl: 'items.html',
-        scope: {
-          items: '<',
-          onRemove: '&'
+  function foundItemsDirective() {
+    var ddo = {
+      templateUrl: 'items.html',
+      scope: {
+        items: '<',
+        onRemove: '&'
+      },
+      controller: foundItemsDirectiveController,
+      controllerAs: 'list',
+      bindToController: true
+    };
+  
+    return ddo;
+  }
+  
+  function foundItemsDirectiveController() {
+    var list = this;
+  }
+  
+  NarrowItDownController.$inject = ['MenuSearchService'];
+  function NarrowItDownController(MenuSearchService) {
+    var narrow = this;
+    narrow.searchTerm="";
+    narrow.found_items=[];
+  
+    narrow.searchMenu=function(searchTerm){
+      var promise = MenuSearchService.getMatchedMenuItems()
+      promise.then(function (response) {
+        var found =[];
+        var menu=response.data.menu_items
+        for (var item in menu){
+          if (menu[item].name.includes(searchTerm)) {
+            if (found.includes(menu[item].name)==false)
+              found.push(menu[item])
+          }
         }
-      };
+        narrow.found_items=found
+        console.log(item);
+        console.log(narrow.found_items);
+      })
+      .catch(function (error) {
+        console.log(error);
+      })
   
-      return ddo;
     }
   
-    NarrowItDownController.$inject = ['MenuSearchService'];
-    function NarrowItDownController(MenuSearchService) {
-      var menu = this;
-      menu.found = [];
+    narrow.removeItem=function(itemIndex){
+      narrow.found_items.splice(itemIndex, 1);
+    }
+  }
   
-      //Implementaion for Filtering Items based on searchTerm
-      menu.getMatchedMenuItems = function () {
-        menu.found = []
-        if (menu.searchTerm) {
-          var promise = MenuSearchService.getMatchedMenuItems(menu.searchTerm);
-          promise.then(function (response) {
-            menu.found = response;
-          })
-          .catch(function (error) {
-            console.log("Something went terribly wrong.");
-          });
-        }
-      };
   
-      // Implementaion for removing item at given index
-      menu.removeItem = function (index) {
-        menu.found.splice(index, 1);
-        if (menu.found.length == 0) {
-          menu.error = "Nothing found";
-        }
-      }
+  MenuSearchService.$inject = ['$http','ApiBasePath'];
+  function MenuSearchService($http, ApiBasePath) {
+    var search = this;
+    var found=[];
+    var item="";
+  
+    search.getMatchedMenuItems = function () {
+      var response = $http({
+        method: "GET",
+        url: ApiBasePath
+      });
+  
+      return response
     };
   
   
-    MenuSearchService.$inject = ['$http', 'ApiBasePath']
-    function MenuSearchService($http, ApiBasePath) {
-      var service = this;
-  
-      service.getMatchedMenuItems = function (searchTerm) {
-        return $http({
-          method: "GET",
-          url: (ApiBasePath + "/menu_items.json"),
-        }).then(function (result) {
-  
-          // process result and only keep items that match
-          var items = result.data.menu_items;
-          var foundItems = []
-          for (var index = 0; index < items.length; index++) {
-            if (items[index].description.indexOf(searchTerm) != -1) {
-              foundItems.push(items[index]);
-            }
-          }
-  
-          // return processed items
-          return foundItems;
-        });
-      };
-  
-    };
+  }
   
   })();
